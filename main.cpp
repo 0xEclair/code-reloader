@@ -1,51 +1,22 @@
 #include <iostream>
-#include <dlfcn.h>
+#include <filesystem>
 
-namespace cr {
-    auto load = [](std::string_view filepath){
-        return dlopen(filepath.data(), RTLD_NOW);
-    };
+#include "lib/cr.hpp"
+#include "lib/newlib.h"
 
-    auto load_symbol = [](void* library, std::string_view symbol){
-        return dlsym(library, symbol.data());
-    };
+auto main() -> int {
+    std::cout << std::filesystem::current_path() << '\n';
+    TestModule::load_library();
+    TestModule::foo();
+    std::cout << "bar == " << TestModule::bar() << '\n';
 
-    auto reload = [](void*& library, std::string_view filepath){
-        dlclose(library);
-        library = dlopen(filepath.data(), RTLD_NOW);
-    };
+    std::cout << "make some changes, wait...\n";
+    std::cout << "press a char\n";
+    while(std::cin.get() !='\n') {}
 
-    auto print_err = [](){
-        printf("Error: %s\n", dlerror());
-    };
-}
+    TestModule::reload_library();
+    TestModule::foo();
+    std::cout << "bar == " << TestModule::bar() << '\n';
 
-int main() {
-    std::cout << "Hello, World!" << std::endl;
-//    Foo f;
-//    std::cout << "The answer is " << f.GetTheAnswer() << '\n';
-    std::string_view filepath = R"(./libnewlib.so)";
-    auto handle = cr::load(filepath);
-    if(handle) {
-        auto foo = reinterpret_cast<void(*)()>(cr::load_symbol(handle, "foo"));
-        foo();
-
-        int bar = *reinterpret_cast<int*>(cr::load_symbol(handle, "bar"));
-        std::cout << "bar == " << bar << '\n';
-        std::cout << "Make some changes, recompile, and press enter." << std::flush;
-        while(std::cin.get() != '\n') {
-
-        }
-        cr::reload(handle, filepath);
-
-        foo = reinterpret_cast<void(*)()>(cr::load_symbol(handle, "foo"));
-        foo();
-
-        bar = *reinterpret_cast<int*>(cr::load_symbol(handle, "bar"));
-        std::cout << "bar == " << bar << '\n';
-    }
-    else {
-        cr::print_err();
-    }
-    return 0;
+    return 245;
 }

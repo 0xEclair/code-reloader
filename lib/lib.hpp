@@ -1,11 +1,12 @@
 #pragma once
 
+<template T>
 class Foo {
 public:
-    auto GetTheAnswer() const {
-        return answer_;
+    auto get() const {
+        return t_;
     }
 
 private:
-    int answer_ = 42;
+    T t_;
 };

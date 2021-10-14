@@ -2,7 +2,7 @@
 #include "newlib.h"
 void foo()
 {
-    printf("Hi\n");
+    printf("hello\n");
 }
 
-int bar = 4;
+int bar = 40;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <variant>
+
 #include "cr.hpp"
 using namespace cr;
 // This line prevents C++ name mangling which would prevent dlsym from retrieving
@@ -12,7 +14,26 @@ void foo();
 extern int bar;
 }
 
-constexpr std::array<std::string_view, 2> exports = {"foo", "bar"};
+//constexpr std::array<std::string_view, 2> exports = {"foo", "bar"};
+namespace std {
+    template<typename T>
+    using __detail_TI = type_identity<T>;
+
+    auto TTI = []<typename T>(){
+        return __detail_TI<std::remove_cvref_t<T>>{};
+    };
+    struct TI {
+        template<typename T>
+        auto operator()() const {
+            return __detail_TI<std::remove_cvref_t<T>>{};
+        }
+    };
+}
+std::array<std::pair<std::string_view , std::any>, 2> exports = {{
+    {"foo", std::TTI.operator()<decltype(&foo)>()},
+    {"bar", std::TTI.operator()<decltype(bar)>()}
+}};
+
 class TestModule : public CrModule<TestModule, exports.size()> {
 public:
     static auto foo() {
@@ -28,7 +49,7 @@ protected:
         return R"(./libnewlib.so)";
     }
 
-    const std::array<std::string_view, 2UL>& symbols() const override {
+    constexpr std::array<std::pair<std::string_view, std::any>, 2UL> & symbols() const override {
         return exports;
     }
 };

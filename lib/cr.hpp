@@ -44,24 +44,24 @@ namespace cr {
         }
 
         virtual std::string_view path() const = 0;
-        virtual const std::array<std::string_view, num_of_symbols>& symbols() const = 0;
+        virtual constexpr std::array<std::pair<std::string_view , std::any>, num_of_symbols>& symbols() const = 0;
 
         template<typename Ret, typename ...Args>
         Ret execute(std::string_view name, Args... args) {
-            symbols_[name] = reinterpret_cast<Ret(*)(Args...)>(dlsym(std::any_cast<void*>(handle_), name.data()));
             if(symbols_[name].has_value()) {
-                return std::any_cast<Ret(*)(Args...)>(symbols_[name])(args...);
+                auto tmp = std::any_cast<void*>(symbols_[name]);
+                return reinterpret_cast<Ret(*)(Args...)>(tmp)(args...);
             }
             else {
-                printf("function not found: %s", name.data());
+                printf("function not found: %s\n", name.data());
             }
         }
 
         template<typename U>
         U* var(std::string_view name) {
-            symbols_[name] = reinterpret_cast<U*>(dlsym(std::any_cast<void*>(handle_), name.data()));
             if(symbols_[name].has_value()) {
-                return std::any_cast<U*>(symbols_[name]);
+                auto tmp = std::any_cast<void*>(symbols_[name]);
+                return static_cast<U*>(tmp);
             }
             else {
                 return nullptr;
@@ -71,6 +71,7 @@ namespace cr {
     private:
         auto load() {
             handle_ = dlopen(path().data(), RTLD_NOW);
+            load_symbols();
         }
 
         auto reload() {
@@ -80,12 +81,11 @@ namespace cr {
         }
 
         auto load_symbols() -> void {
-            for(const auto& sym : symbols()) {
-                symbols_[sym] = dlsym(std::any_cast<void*>(handle_), sym.data());
+            for(const auto& [name, symbol] : symbols()) {
+                symbols_[name] = dlsym(std::any_cast<void*>(handle_), name.data());
             }
         }
         std::any handle_;
-    protected:
         std::unordered_map<std::string_view, std::any> symbols_;
     };
 }

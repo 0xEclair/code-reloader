@@ -48,9 +48,9 @@ namespace cr {
 
         template<typename Ret, typename ...Args>
         Ret execute(std::string_view name, Args... args) {
-            if(symbols_.contains(name)) {
-                void* tmp = std::any_cast<void*>(symbols_[name]);
-                return (reinterpret_cast<Ret(*)(Args...)>(tmp))(args...);
+            symbols_[name] = reinterpret_cast<Ret(*)(Args...)>(dlsym(std::any_cast<void*>(handle_), name.data()));
+            if(symbols_[name].has_value()) {
+                return std::any_cast<Ret(*)(Args...)>(symbols_[name])(args...);
             }
             else {
                 printf("function not found: %s", name.data());
@@ -59,9 +59,9 @@ namespace cr {
 
         template<typename U>
         U* var(std::string_view name) {
-            if(symbols_.contains(name)) {
-                void* tmp = std::any_cast<void*>(symbols_[name]);
-                return reinterpret_cast<U*>(tmp);
+            symbols_[name] = reinterpret_cast<U*>(dlsym(std::any_cast<void*>(handle_), name.data()));
+            if(symbols_[name].has_value()) {
+                return std::any_cast<U*>(symbols_[name]);
             }
             else {
                 return nullptr;
@@ -71,9 +71,6 @@ namespace cr {
     private:
         auto load() {
             handle_ = dlopen(path().data(), RTLD_NOW);
-            if(handle_.has_value()) {
-                load_symbols();
-            }
         }
 
         auto reload() {
